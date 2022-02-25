@@ -1,47 +1,35 @@
 const User = require('../users/users-model');
 
-const checkUsernameExists = async (req, res, next) => {
-  const [user] = await User.getBy({ username: req.body.username });
-  if (!user) {
-    next({ status: 401, message: "Invalid credentials" });
-  } else {
-    req.user = user;
-    next();
-  }
-};
-
-const checkUsernameFree = async (req, res, next) => {
-  try {
-    const user = await User.getBy({ username: req.body.username });
-    if (user.length === 0) {
-      next();
+function checkPayload (req, res, next) {
+    const { username, password } = req.body
+  
+    if (!username || !password) {
+      next({
+        status: 422,
+        message: 'username and password required'
+      })
     } else {
-      next({ status: 401, message: "Username taken" });
+      next()
     }
-  } catch (err) {
-    next(err);
   }
-};
-
-const checkUserAndPass = async (req, res, next) => {
-  if (!req.body.username || !req.body.password) {
-    next({ message: "username and password required" });
-  } else {
-    next();
+  
+  async function checkUsernameFree (req, res, next) {
+    try {
+      const users = await User.getBy(req.body.username)
+      if (!users.length) {
+        next()
+      } else {
+        next({
+          status: 422,
+          message: 'username is taken'
+        })
+      }
+    } catch (err) {
+      next(err)
+    }
   }
-};
-
-const checkPasswordLength = (req, res, next) => {
-  if (!req.body.password || req.body.password.length > 3) {
-    next();
-  } else {
-    next({ status: 422, message: "Password is too short!" });
+  
+  module.exports = {
+    checkPayload,
+    checkUsernameFree
   }
-};
-
-module.exports = {
-  checkUsernameExists,
-  checkUsernameFree,
-  checkUserAndPass,
-  checkPasswordLength,
-};
