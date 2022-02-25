@@ -1,6 +1,11 @@
 const router = require('express').Router();
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const User = require('../users/users-model');
+const { JWT_SECRET, BCRYPT_AMOUNT } = require('../index');
+const { checkUsernameFree, checkPasswordLength, checkUserAndPass, } = require('./auth-middleware');
 
-router.post('/register', (req, res) => {
+router.post('/register', checkUsernameFree, checkPasswordLength, checkUserAndPass, (req, res, next) => {
   /*
     IMPLEMENT
     You are welcome to build additional middlewares to help with the endpoint's functionality.
@@ -26,6 +31,17 @@ router.post('/register', (req, res) => {
     4- On FAILED registration due to the `username` being taken,
       the response body should include a string exactly as follows: "username taken".
   */
+ 
+  let user = req.body
+
+  const hash = bcrypt.hashSync(user.password, BCRYPT_ROUNDS)
+  user.password = hash
+  
+  User.create(user)
+    .then(newUser => {
+      res.json(newUser)
+    })
+    .catch(next)
 });
 
 router.post('/login', (req, res) => {
@@ -53,6 +69,15 @@ router.post('/login', (req, res) => {
     4- On FAILED login due to `username` not existing in the db, or `password` being incorrect,
       the response body should include a string exactly as follows: "invalid credentials".
   */
+  function tokenGen(user) {
+    const payload = {
+      username: user.username,
+    };
+    const options = {
+      expiresIn: "1d",
+    };
+    return jwt.sign(payload, JWT_SECRET, options);
+  }
 });
 
 module.exports = router;
